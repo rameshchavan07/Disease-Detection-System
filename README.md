@@ -15,6 +15,7 @@ This project aims to assist users and healthcare professionals by providing quic
 * Detect possible diseases
 * Display predicted disease results
 * User-friendly interface
+* support multiple devices
 
 ---
 
@@ -98,5 +99,6 @@ npm start
 This system is for **educational and research purposes only** and should not replace professional medical advice.
 
 ---
+
 
 
