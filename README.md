@@ -99,8 +99,4 @@ This system is for **educational and research purposes only** and should not rep
 
 ---
 
-## Author
 
-Ruturaj
-
-Computer Engineering Student
