@@ -1,0 +1,75 @@
+"""
+Application Settings & Constants
+Multi-Disease Detection System
+"""
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# ──────────────────────────────────────────
+# App Configuration
+# ──────────────────────────────────────────
+APP_NAME = "MedDetect AI"
+APP_VERSION = "2.0.0"
+APP_DESCRIPTION = "AI-Powered Multi-Disease Detection System"
+APP_ICON = "🧠"
+
+# ──────────────────────────────────────────
+# Paths
+# ──────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+MODEL_PATH = os.path.join(MODELS_DIR, "trained_model.pkl")
+DATASET_PATH = os.path.join(DATA_DIR, "dataset.csv")
+DISEASE_INFO_PATH = os.path.join(DATA_DIR, "disease_info.json")
+SYMPTOM_SEVERITY_PATH = os.path.join(DATA_DIR, "symptom_severity.json")
+
+# ──────────────────────────────────────────
+# Supabase Configuration (loaded from .env)
+# ──────────────────────────────────────────
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+# ──────────────────────────────────────────
+# ML Model Settings
+# ──────────────────────────────────────────
+MODEL_TYPE = "RandomForest"
+N_ESTIMATORS = 200
+RANDOM_STATE = 42
+TEST_SIZE = 0.2
+TOP_K_PREDICTIONS = 3
+
+# ──────────────────────────────────────────
+# Severity Levels
+# ──────────────────────────────────────────
+SEVERITY_LEVELS = {
+    "low": {"label": "Low", "color": "#4CAF50", "icon": "🟢"},
+    "moderate": {"label": "Moderate", "color": "#FF9800", "icon": "🟡"},
+    "high": {"label": "High", "color": "#F44336", "icon": "🔴"},
+    "critical": {"label": "Critical", "color": "#B71C1C", "icon": "🚨"},
+}
+
+# ──────────────────────────────────────────
+# Medical Disclaimer
+# ──────────────────────────────────────────
+DISCLAIMER = (
+    "⚠️ **Medical Disclaimer**: This system is for informational and educational "
+    "purposes only. It does NOT replace professional medical advice, diagnosis, or "
+    "treatment. Always seek the advice of a qualified healthcare provider with any "
+    "questions regarding a medical condition."
+)
+
+# ──────────────────────────────────────────
+# API Keys (loaded from .env)
+# ──────────────────────────────────────────
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+# ──────────────────────────────────────────
+# Session & Rate Limiting
+# ──────────────────────────────────────────
+SESSION_TIMEOUT_MINUTES = 60
+CHAT_RATE_LIMIT_PER_MINUTE = 10
