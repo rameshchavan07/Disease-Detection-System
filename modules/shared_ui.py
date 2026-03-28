@@ -3,6 +3,7 @@ Shared Premium CSS & Sidebar Component
 Provides consistent styling and user profile across all pages.
 """
 import streamlit as st
+from modules.floating_chat import render_floating_chatbot
 
 
 def inject_premium_css():
@@ -250,3 +251,16 @@ def render_sidebar():
             MedDetect AI v2.0<br>Powered by ML & Groq AI
         </div>
         """, unsafe_allow_html=True)
+
+    # Global Floating AI Chatbot with Context
+    predictions = st.session_state.get('last_predictions', [])
+    symptoms = st.session_state.get('last_symptoms', [])
+    
+    context = None
+    if predictions or symptoms:
+        context = {
+            "predictions": predictions,
+            "symptoms": symptoms
+        }
+    
+    render_floating_chatbot(context=context)

@@ -9,3 +9,4 @@ __pycache__/
 *.pkl
 .gogle_credentials.json
 google_credentials.json
+.streamlit/

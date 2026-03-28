@@ -2,14 +2,19 @@
 ML Engine - Disease Prediction Module
 Loads trained model and provides prediction functions.
 """
-import os, re, sys
+import os, re, sys, json
 import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
+from modules.logger import get_logger
+
+logger = get_logger("ml_engine")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "trained_model.pkl")
+MODEL_VERSION = "2.4"
+MODEL_PATH = os.path.join(BASE_DIR, "models", f"trained_model_v{MODEL_VERSION}.pkl")
+METADATA_PATH = os.path.join(BASE_DIR, "models", "metadata.json")
 
 @st.cache_resource(show_spinner="🧠 Loading AI model (first time only)...")
 def _load_model():
@@ -18,7 +23,10 @@ def _load_model():
         import subprocess
         st.toast("First Server Boot: Synthesizing random forest model... This takes ~5 seconds.", icon="⚙️")
         train_script = os.path.join(BASE_DIR, "models", "train_model.py")
+        logger.info("Synthesizing model from scratch...")
         subprocess.run([sys.executable, train_script], check=True)
+        
+    logger.info(f"Loading trained AI model from {MODEL_PATH}")
     return joblib.load(MODEL_PATH)
 
 def get_all_symptoms():
@@ -81,11 +89,22 @@ def predict_disease(symptoms: list, top_k: int = 3):
     return results
 
 def get_model_accuracy():
-    """Return model accuracy metrics."""
+    """Return model accuracy metrics and version."""
     data = _load_model()
+    
+    version = "1.0.0" # Default
+    if os.path.exists(METADATA_PATH):
+        try:
+            with open(METADATA_PATH, 'r') as f:
+                metadata = json.load(f)
+                version = metadata.get("version", "1.0.0")
+        except Exception as e:
+            logger.warning(f"Could not load metadata.json: {e}")
+            
     return {
         "accuracy": round(data.get("accuracy", 0) * 100, 2),
-        "cv_accuracy": round(data.get("cv_accuracy", 0) * 100, 2)
+        "cv_accuracy": round(data.get("cv_accuracy", 0) * 100, 2),
+        "version": version
     }
 
 def format_symptom_name(symptom: str) -> str:

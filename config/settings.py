@@ -62,11 +62,20 @@ DISCLAIMER = (
     "questions regarding a medical condition."
 )
 
-# ──────────────────────────────────────────
-# API Keys (loaded from .env)
-# ──────────────────────────────────────────
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+def get_secret(name: str, default: str = "") -> str:
+    """Safe retrieval of secrets from st.secrets or env vars."""
+    try:
+        import streamlit as st
+        # This only works when running via streamlit
+        if name in st.secrets:
+            return st.secrets[name]
+    except Exception:
+        pass
+    return os.environ.get(name, default)
+
+# ── API Keys ──
+GEMINI_API_KEY = get_secret("GEMINI_API_KEY")
+GROQ_API_KEY = get_secret("GROQ_API_KEY")
 
 # ──────────────────────────────────────────
 # Session & Rate Limiting

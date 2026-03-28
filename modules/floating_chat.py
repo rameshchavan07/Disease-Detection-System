@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 import base64
 import os
 import sys
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.settings import GEMINI_API_KEY, GROQ_API_KEY
@@ -19,11 +20,20 @@ def _get_avatar_b64():
     return None
 
 
-def render_floating_chatbot():
+def render_floating_chatbot(context: dict = None):
     """Floating doctor chatbot widget injected into parent Streamlit page via iframe JS."""
     b64 = _get_avatar_b64()
     api_key = GEMINI_API_KEY or ""
     groq_key = GROQ_API_KEY or ""
+    
+    # Format context for JS injection
+    context_str = "None"
+    if context:
+        symptoms_list = context.get('symptoms', [])
+        symptoms = ", ".join(symptoms_list) if isinstance(symptoms_list, list) else str(symptoms_list)
+        preds_list = context.get('predictions', [])
+        predictions = ", ".join([f"{p['disease']} ({p.get('confidence',0)}%)" for p in (preds_list[:3] if isinstance(preds_list, list) else [])])
+        context_str = f"Symptoms: {symptoms} | Top Predictions: {predictions}"
 
     if b64:
         av_img = 'data:image/png;base64,' + b64
@@ -32,6 +42,21 @@ def render_floating_chatbot():
     else:
         av_fab = '<span style="font-size:1.6rem;">&#128104;&#8205;&#9877;&#65039;</span>'
         av_small = '<span style="font-size:0.85rem;">&#128104;&#8205;&#9877;&#65039;</span>'
+
+    # Base system prompt
+    sys_prompt = "You are Dr. Docyote, a friendly AI medical assistant. Give concise helpful answers with emojis. Always advise seeing a real doctor for serious concerns. For emergencies, advise calling emergency services immediately. Respond in the user's language."
+    if context_str != "None":
+        sys_prompt += " The user just ran a symptom check. " + context_str + ". Use this context to answer follow-up questions."
+    
+    welcome_msg = "Hi! 👋 I’m Dr. Docyote, your AI health assistant!\n\nAsk me about symptoms, diseases, home remedies, or any health question. I’m here to help! 🪴"
+    
+    # Use json.dumps to safely inject into JS
+    api_key_js = json.dumps(api_key or "")
+    groq_key_js = json.dumps(groq_key or "")
+    context_str_js = json.dumps(context_str)
+    sys_prompt_js = json.dumps(sys_prompt)
+    welcome_msg_js = json.dumps(welcome_msg)
+    av_small_js = json.dumps(av_small) # Safe for use in JS strings
 
     # The entire widget is injected into the PARENT document from within the iframe
     # This is the only way to get both JS execution AND fixed positioning in Streamlit
@@ -45,9 +70,26 @@ def render_floating_chatbot():
   // Target the parent Streamlit document
   var doc = window.parent.document;
 
-  // Prevent duplicate injection
-  if (doc.getElementById('drd-fab')) {{
-    console.log('Dr. Docyote already injected, skipping.');
+  // --- Update-if-exists Logic ---
+  var existing = doc.getElementById('drd-fab');
+  if (existing) {{
+    var newContext = {context_str_js};
+    var newSys = {sys_prompt_js};
+    
+    // Update the parent-level state
+    doc.body.__drd_context = newContext;
+    doc.body.__drd_sys = newSys;
+    
+    console.log('Dr. Docyote: Context updated to', newContext);
+    
+    // If a new symptom check was performed, notify the bot
+    if (newContext !== "None" && doc.body.__drd_last_notified !== newContext) {{
+      doc.body.__drd_last_notified = newContext;
+      if (typeof doc.body.__drd_addMsg === 'function') {{
+         var msg = 'I see you just updated your symptoms: ' + newContext.split('|')[0].replace('Symptoms:', '') + '. How can I help?';
+         doc.body.__drd_addMsg('bot', msg);
+      }}
+    }}
     return;
   }}
 
@@ -216,9 +258,13 @@ def render_floating_chatbot():
   doc.body.appendChild(container);
 
   // --- Wire up event handlers ---
-  var API_K = "{api_key}";
-  var GROQ_K = "{groq_key}";
-  var SYS = "You are Dr. Docyote, a friendly AI medical assistant. Give concise helpful answers with emojis. Always advise seeing a real doctor for serious concerns. For emergencies, advise calling emergency services immediately.";
+  // Store state on doc.body to survive sidebar re-renders
+  doc.body.__drd_api = {api_key_js};
+  doc.body.__drd_groq = {groq_key_js};
+  doc.body.__drd_context = {context_str_js};
+  doc.body.__drd_sys = {sys_prompt_js};
+  doc.body.__drd_last_notified = doc.body.__drd_context;
+
   var hist = [];
 
   var fab = doc.getElementById('drd-fab');
@@ -248,10 +294,13 @@ def render_floating_chatbot():
   function addMsg(role, text) {{
     var div = doc.createElement('div');
     div.className = 'drd-msg' + (role === 'user' ? ' drd-u' : '');
-    var avHtml = role === 'user' ? '<span style="font-size:0.75rem;">&#128100;</span>' : '{av_small}';
+    var avHtml = role === 'user' ? '<span style="font-size:0.75rem;">&#128100;</span>' : {av_small_js};
     div.innerHTML = '<div class="drd-av">' + avHtml + '</div><div class="drd-bubble">' + text.replace(/\\n/g, '<br>') + '</div>';
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
+    
+    // Expose to parent body for hot-reloading context messages
+    doc.body.__drd_addMsg = addMsg;
     return div;
   }}
 
@@ -262,6 +311,7 @@ def render_floating_chatbot():
     div.innerHTML = '<div class="drd-av">{av_small}</div><div class="drd-bubble"><div class="drd-typing"><span></span><span></span><span></span></div></div>';
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
+    return div;
   }}
 
   function removeTyping() {{
@@ -270,49 +320,65 @@ def render_floating_chatbot():
   }}
 
   async function sendMessage() {{
-    var txt = inp.value.trim();
-    if (!txt) return;
+    var val = inp.value.trim();
+    if (!val) return;
     inp.value = '';
-    addMsg('user', txt);
-    hist.push({{ role: 'user', parts: [{{ text: txt }}] }});
+    addMsg('user', val);
+    hist.push({{ role: 'user', content: val }});
     sendBtn.disabled = true;
-    showTyping();
+    var typ = showTyping();
 
+    // Prioritize Groq, Fallback to Gemini 2.0-Flash
+    var url = doc.body.__drd_groq ? 'https://api.groq.com/openai/v1/chat/completions' : 
+              'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + doc.body.__drd_api;
+    var usingGroq = !!doc.body.__drd_groq;
+    
+    var bodyMsgs = [{{ role: 'system', content: doc.body.__drd_sys }}].concat(hist.slice(-6));
+    var body = usingGroq ? JSON.stringify({{ model: "llama-3.3-70b-versatile", messages: bodyMsgs, temperature: 0.7 }}) 
+                        : JSON.stringify({{ contents: [{{ parts: [{{ text: bodyMsgs.map(m=>m.role+": "+m.content).join("\\n") }}] }}], generationConfig: {{ temperature: 0.7 }} }});
+    
     try {{
-      var reply;
-      if (GROQ_K) {{
-        // Use Groq (Llama 3.3 70B) - fast & free
-        var groqMessages = [{{ role: 'system', content: SYS }}];
-        for (var i = 0; i < hist.length; i++) {{
-          groqMessages.push({{ role: hist[i].role === 'model' ? 'assistant' : hist[i].role, content: hist[i].parts[0].text }});
-        }}
-        var r = await fetch('https://api.groq.com/openai/v1/chat/completions', {{
-          method: 'POST',
-          headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_K }},
-          body: JSON.stringify({{ model: 'llama-3.3-70b-versatile', messages: groqMessages, max_tokens: 1024 }})
-        }});
-        var d = await r.json();
-        removeTyping();
-        reply = (d.choices && d.choices[0]) ? d.choices[0].message.content : 'Error: ' + (d.error ? d.error.message : 'Empty response');
-      }} else if (API_K) {{
-        // Fallback to Gemini
-        var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + API_K, {{
-          method: 'POST',
-          headers: {{ 'Content-Type': 'application/json' }},
-          body: JSON.stringify({{ system_instruction: {{ parts: [{{ text: SYS }}] }}, contents: hist }})
-        }});
-        var d = await r.json();
-        removeTyping();
-        reply = (d.candidates && d.candidates[0]) ? d.candidates[0].content.parts[0].text : 'Error: ' + (d.error ? d.error.message : 'Empty response');
-      }} else {{
-        removeTyping();
-        reply = 'No API key configured. Please add GROQ_API_KEY or GEMINI_API_KEY to your .env file.';
+      var res = await fetch(url, {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json', ...(usingGroq ? {{'Authorization': 'Bearer ' + doc.body.__drd_groq}} : {{}}) }},
+        body: body
+      }});
+      
+      // Handle Rate Limits (429)
+      if (res.status === 429) {{
+          msgs.removeChild(typ);
+          addMsg('bot', 'I’m taking a quick 60-second break to rest my brain! Please ask me again in a minute. ☕');
+          sendBtn.disabled = false;
+          return;
       }}
-      addMsg('bot', reply);
-      hist.push({{ role: 'model', parts: [{{ text: reply }}] }});
-    }} catch(e) {{
-      removeTyping();
-      addMsg('bot', 'Network error. Please check your connection and try again.');
+
+      var data = await res.json();
+      var botTxt = "";
+      
+      if (usingGroq) {{
+          if (data.choices && data.choices[0]) botTxt = data.choices[0].message.content;
+          else throw new Error('Groq format mismatch');
+      }} else {{
+          if (data.candidates && data.candidates[0]) botTxt = data.candidates[0].content.parts[0].text;
+          else if (data.error) {{
+              if (data.error.status === 'RESOURCE_EXHAUSTED') {{
+                  msgs.removeChild(typ);
+                  addMsg('bot', 'My AI batteries are recharging! Please try again in 60 seconds. 🔋');
+                  sendBtn.disabled = false;
+                  return;
+              }}
+              throw new Error(data.error.message);
+          }}
+          else throw new Error('Gemini format mismatch');
+      }}
+      
+      msgs.removeChild(typ);
+      addMsg('bot', botTxt);
+      hist.push({{ role: 'assistant', content: botTxt }});
+    }} catch (err) {{
+      console.error('Dr. Docyote Error:', err);
+      msgs.removeChild(typ);
+      addMsg('bot', 'I encountered a brief connection issue. Please try again in a moment! ⚠️');
     }}
     sendBtn.disabled = false;
     inp.focus();
@@ -328,8 +394,13 @@ def render_floating_chatbot():
     }}
   }});
 
-  // Welcome message
-  addMsg('bot', 'Hi! &#128075; I&#8217;m Dr. Docyote, your AI health assistant!\\n\\nAsk me about symptoms, diseases, home remedies, or any health question. I&#8217;m here to help! &#129690;');
+  // --- Initial State ---
+  addMsg('bot', {welcome_msg_js});
+
+  if (doc.body.__drd_context !== "None") {{
+     var contextMsg = 'I see you just finished a symptom check for: ' + doc.body.__drd_context.split('|')[0].replace('Symptoms:', '') + '. How can I help you with these results?';
+     addMsg('bot', contextMsg);
+  }}
 
   // Fade tooltip after 5s
   setTimeout(function() {{

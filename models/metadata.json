@@ -1,0 +1,12 @@
+{
+    "version": "2.4",
+    "timestamp": "2026-03-28T13:22:35.466435",
+    "accuracy": 0.9336,
+    "cv_accuracy": 0.9463,
+    "hyperparameters": {
+        "n_estimators": 200,
+        "max_depth": null,
+        "min_samples_split": 2,
+        "min_samples_leaf": 1
+    }
+}

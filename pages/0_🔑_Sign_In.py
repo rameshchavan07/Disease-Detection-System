@@ -15,8 +15,7 @@ from modules.database import supabase
 from modules.shared_ui import inject_premium_css, render_sidebar
 
 GOOGLE_CRED_PATH = os.path.join(PROJECT_ROOT, 'google_credentials.json')
-# Use Google's redirect URI from secrets if it exists, otherwise use localhost
-REDIRECT_URI = st.secrets.get("google", {}).get("redirect_uri", 'http://localhost:8501/Sign_in')
+REDIRECT_URI = st.secrets.get("google", {}).get("redirect_uri", 'http://localhost:8501/Sign_In')
 
 st.set_page_config(page_title="Sign In - MedDetect AI", page_icon="🔑", layout="centered")
 
@@ -124,20 +123,12 @@ if "user_id" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = None
 
-# ── Google OAuth Credentials ──
+# ── Google OAuth Callback ──
 google_creds = None
-
-# 1. Check Streamlit Secrets first (for Cloud deployment)
-if "google" in st.secrets:
-    google_creds = st.secrets["google"]
-# 2. Fall back to local JSON file
-elif os.path.exists(GOOGLE_CRED_PATH):
-    try:
-        with open(GOOGLE_CRED_PATH, 'r') as f:
-            raw = json.load(f)
-            google_creds = raw.get('web', raw.get('installed', raw))
-    except Exception as e:
-        st.error(f"Error loading local credentials: {e}")
+if os.path.exists(GOOGLE_CRED_PATH):
+    with open(GOOGLE_CRED_PATH, 'r') as f:
+        raw = json.load(f)
+        google_creds = raw.get('web', raw.get('installed', raw))
 
 query_params = st.query_params
 if "code" in query_params and not st.session_state.user_id and google_creds:

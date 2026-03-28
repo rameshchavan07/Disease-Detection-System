@@ -13,7 +13,8 @@ from sklearn.preprocessing import LabelEncoder
 # Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "data", "dataset.csv")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "trained_model.pkl")
+MODEL_VERSION = "2.4"
+MODEL_PATH = os.path.join(BASE_DIR, "models", f"trained_model_v{MODEL_VERSION}.pkl")
 
 def train():
     print("Loading dataset...")
@@ -63,7 +64,28 @@ def train():
     
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(model_data, MODEL_PATH)
+    
+    # Save Metadata
+    import datetime
+    metadata = {
+        "version": MODEL_VERSION,
+        "timestamp": datetime.datetime.now().isoformat(),
+        "accuracy": round(accuracy, 4),
+        "cv_accuracy": round(cv_scores.mean(), 4),
+        "hyperparameters": {
+            "n_estimators": 200,
+            "max_depth": None,
+            "min_samples_split": 2,
+            "min_samples_leaf": 1
+        }
+    }
+    
+    metadata_path = os.path.join(os.path.dirname(MODEL_PATH), "metadata.json")
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=4)
+        
     print(f"\nModel saved to: {MODEL_PATH}")
+    print(f"Metadata saved to: {metadata_path}")
     
     return model_data
 

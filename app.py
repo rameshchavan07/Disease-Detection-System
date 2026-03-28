@@ -4,7 +4,9 @@ Main Streamlit Application Entry Point
 """
 #streamlit run app.py
 import streamlit as st
+from modules.logger import get_logger
 
+logger = get_logger("app")
 # Page config MUST be first Streamlit command
 st.set_page_config(
     page_title="MedDetect AI - Disease Detection",
@@ -425,8 +427,9 @@ with st.sidebar:
             try:
                 from modules.database import supabase
                 supabase.auth.sign_out()
-            except Exception:
-                pass
+                logger.info(f"User signed out: {st.session_state.user_email}")
+            except Exception as e:
+                logger.warning(f"Error during sign out: {e}")
             st.session_state.user_id = None
             st.session_state.user_email = None
             st.session_state.pop('google_name', None)
