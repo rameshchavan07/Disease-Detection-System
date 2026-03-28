@@ -16,7 +16,7 @@ from modules.shared_ui import inject_premium_css, render_sidebar
 
 GOOGLE_CRED_PATH = os.path.join(PROJECT_ROOT, 'google_credentials.json')
 # Use Google's redirect URI from secrets if it exists, otherwise use localhost
-REDIRECT_URI = st.secrets.get("google", {}).get("redirect_uri", 'https://disease-detection-system-rutu.streamlit.app/Sign_in')
+REDIRECT_URI = st.secrets.get("google", {}).get("redirect_uri", 'http://localhost:8501/Sign_in')
 
 st.set_page_config(page_title="Sign In - MedDetect AI", page_icon="🔑", layout="centered")
 
