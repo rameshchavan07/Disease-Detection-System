@@ -218,18 +218,12 @@ with tab2:
                             # 2. Translate to English if non-English
                             translated_text = translate_to_english(transcription.text)
                             
-                            if translated_text == "[[QUOTA_EXCEEDED]]":
-                                st.warning("⚠️ AI Rate Limit Reached: Your free plan is resting. Please wait about 60 seconds and try again!")
-                                # Don't set the text to the error token
-                                if "nlp_voice_text" in st.session_state:
-                                    del st.session_state["nlp_voice_text"]
+                            st.session_state["nlp_voice_text"] = translated_text
+                            
+                            if translated_text.lower() != transcription.text.lower():
+                                st.success(f"✅ Translated to English: \"{translated_text}\"")
                             else:
-                                st.session_state["nlp_voice_text"] = translated_text
-                                
-                                if translated_text.lower() != transcription.text.lower():
-                                    st.success(f"✅ Translated to English: \"{translated_text}\"")
-                                else:
-                                    st.success("✅ Transcription complete!")
+                                st.success("✅ Transcription complete!")
                                 
                             st.rerun() # Refresh to populate the text box
                         except groq.APIConnectionError as e:

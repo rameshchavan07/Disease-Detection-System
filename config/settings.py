@@ -75,6 +75,14 @@ def get_secret(name: str, default: str = "") -> str:
 
 # ── API Keys ──
 GEMINI_API_KEY = get_secret("GEMINI_API_KEY")
+# Support for Multi-Key Rotation
+GEMINI_API_KEYS = get_secret("GEMINI_API_KEYS")
+if not GEMINI_API_KEYS:
+    GEMINI_API_KEYS = [GEMINI_API_KEY] if GEMINI_API_KEY else []
+elif isinstance(GEMINI_API_KEYS, str):
+    # If passed as a comma-separated string in .env
+    GEMINI_API_KEYS = [k.strip() for k in GEMINI_API_KEYS.split(",") if k.strip()]
+
 GROQ_API_KEY = get_secret("GROQ_API_KEY")
 
 # ──────────────────────────────────────────

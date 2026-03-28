@@ -70,25 +70,146 @@ def render_floating_chatbot(context: dict = None):
   // Target the parent Streamlit document
   var doc = window.parent.document;
 
+  // --- Functional Logic ---
+  // We define these first so both the 'New' and 'Existing' blocks can use them
+  function togglePanel() {{
+    var fab = doc.getElementById('drd-fab');
+    var panel = doc.getElementById('drd-panel');
+    var tip = doc.getElementById('drd-tip');
+    var inp = doc.getElementById('drd-inp');
+    
+    var isOpen = panel.classList.toggle('drd-open');
+    if (isOpen) {{
+      fab.style.animation = 'none';
+      fab.style.transform = 'rotate(15deg) scale(0.9)';
+      if (tip) tip.style.display = 'none';
+      setTimeout(function() {{ inp.focus(); }}, 350);
+    }} else {{
+      fab.style.animation = 'drdFloat 3.5s ease-in-out infinite';
+      fab.style.transform = '';
+    }}
+  }}
+
+  function addMsg(role, text) {{
+    var msgs = doc.getElementById('drd-msgs');
+    var div = doc.createElement('div');
+    div.className = 'drd-msg' + (role === 'user' ? ' drd-u' : '');
+    var avHtml = role === 'user' ? '<span style="font-size:0.75rem;">&#128100;</span>' : {av_small_js};
+    div.innerHTML = '<div class="drd-av">' + avHtml + '</div><div class="drd-bubble">' + text.replace(/\\n/g, '<br>') + '</div>';
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }}
+
+  var hist = [];
+  async function sendMessage() {{
+    var inp = doc.getElementById('drd-inp');
+    var msgs = doc.getElementById('drd-msgs');
+    var sendBtn = doc.getElementById('drd-send');
+    
+    var val = inp.value.trim();
+    if (!val) return;
+    inp.value = '';
+    addMsg('user', val);
+    hist.push({{ role: 'user', content: val }});
+    sendBtn.disabled = true;
+
+    // Typing indicator
+    var typ = doc.createElement('div');
+    typ.className = 'drd-msg';
+    typ.id = 'drd-typing';
+    typ.innerHTML = '<div class="drd-av">{av_small}</div><div class="drd-bubble"><div class="drd-typing"><span></span><span></span><span></span></div></div>';
+    msgs.appendChild(typ);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    // Prioritize Groq, Fallback to Gemini 2.0-Flash
+    var url = doc.body.__drd_groq ? 'https://api.groq.com/openai/v1/chat/completions' : 
+              'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + doc.body.__drd_api;
+    var usingGroq = !!doc.body.__drd_groq;
+    
+    var bodyMsgs = [{{ role: 'system', content: doc.body.__drd_sys }}].concat(hist.slice(-6));
+    var body = usingGroq ? JSON.stringify({{ model: "llama-3.3-70b-versatile", messages: bodyMsgs, temperature: 0.7 }}) 
+                        : JSON.stringify({{ contents: [{{ parts: [{{ text: bodyMsgs.map(m=>m.role+": "+m.content).join("\\n") }}] }}], generationConfig: {{ temperature: 0.7 }} }});
+    
+    try {{
+      var res = await fetch(url, {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json', ...(usingGroq ? {{'Authorization': 'Bearer ' + doc.body.__drd_groq}} : {{}}) }},
+        body: body
+      }});
+      
+      if (res.status === 429) {{
+          msgs.removeChild(typ);
+          addMsg('bot', 'I’m taking a quick 60-second break to rest my brain! Please ask me again in a minute. ☕');
+          sendBtn.disabled = false;
+          return;
+      }}
+
+      var data = await res.json();
+      var botTxt = "";
+      
+      if (usingGroq) {{
+          if (data.choices && data.choices[0]) botTxt = data.choices[0].message.content;
+          else throw new Error('Groq format mismatch');
+      }} else {{
+          if (data.candidates && data.candidates[0]) botTxt = data.candidates[0].content.parts[0].text;
+          else if (data.error) {{
+              if (data.error.status === 'RESOURCE_EXHAUSTED') {{
+                  msgs.removeChild(typ);
+                  addMsg('bot', 'My AI batteries are recharging! Please try again in 60 seconds. 🔋');
+                  sendBtn.disabled = false;
+                  return;
+              }}
+              throw new Error(data.error.message);
+          }}
+          else throw new Error('Gemini format mismatch');
+      }}
+      
+      msgs.removeChild(typ);
+      addMsg('bot', botTxt);
+      hist.push({{ role: 'assistant', content: botTxt }});
+    }} catch (err) {{
+      console.error('Dr. Docyote Error:', err);
+      msgs.removeChild(typ);
+      addMsg('bot', 'I encountered a brief connection issue. Please try again in a moment! ⚠️');
+    }}
+    sendBtn.disabled = false;
+    inp.focus();
+  }}
+
   // --- Update-if-exists Logic ---
   var existing = doc.getElementById('drd-fab');
   if (existing) {{
     var newContext = {context_str_js};
     var newSys = {sys_prompt_js};
     
-    // Update the parent-level state
+    doc.body.__drd_api = {api_key_js};
+    doc.body.__drd_groq = {groq_key_js};
     doc.body.__drd_context = newContext;
     doc.body.__drd_sys = newSys;
     
-    console.log('Dr. Docyote: Context updated to', newContext);
+    // RE-WIRE Event Listeners (Crucial for page transitions)
+    existing.onclick = togglePanel;
+    doc.getElementById('drd-close-btn').onclick = togglePanel;
     
-    // If a new symptom check was performed, notify the bot
+    var sendBtn = doc.getElementById('drd-send');
+    if (sendBtn) sendBtn.onclick = sendMessage;
+    
+    var inp = doc.getElementById('drd-inp');
+    if (inp) {{
+      inp.onkeydown = function(e) {{
+        if (e.key === 'Enter' && !e.shiftKey) {{
+          e.preventDefault();
+          sendMessage();
+        }}
+      }};
+    }}
+    
+    console.log('Dr. Docyote: Controls re-linked to active session.');
+    
     if (newContext !== "None" && doc.body.__drd_last_notified !== newContext) {{
       doc.body.__drd_last_notified = newContext;
-      if (typeof doc.body.__drd_addMsg === 'function') {{
-         var msg = 'I see you just updated your symptoms: ' + newContext.split('|')[0].replace('Symptoms:', '') + '. How can I help?';
-         doc.body.__drd_addMsg('bot', msg);
-      }}
+      var msg = 'I see you just updated your symptoms: ' + newContext.split('|')[0].replace('Symptoms:', '') + '. How can I help?';
+      addMsg('bot', msg);
     }}
     return;
   }}
@@ -108,43 +229,37 @@ def render_floating_chatbot(context: dict = None):
       display: flex; align-items: center; justify-content: center;
       border: 3px solid rgba(255,255,255,0.2); overflow: hidden;
       animation: drdFloat 3.5s ease-in-out infinite;
-      transition: transform 0.25s cubic-bezier(0.34,1.6,0.64,1), box-shadow 0.25s;
+      transition: transform 0.3s, background 0.3s;
     }}
-    #drd-fab:hover {{ box-shadow: 0 12px 40px rgba(108,99,255,0.6); transform: scale(1.08); }}
-
+    #drd-fab:hover {{ transform: scale(1.05); background: linear-gradient(145deg, #7B73FF, #5A51C3); }}
     #drd-dot {{
-      position: fixed; bottom: 80px; right: 30px; width: 14px; height: 14px; border-radius: 50%;
-      background: #00D68F; border: 2.5px solid #111827; box-shadow: 0 0 10px rgba(0,214,143,0.5);
-      z-index: 1000000; animation: drdPulse 2s ease-in-out infinite;
+      position: fixed; bottom: 74px; right: 28px; width: 14px; height: 14px; background: #00D68F;
+      border-radius: 50%; border: 2px solid #0d1117; z-index: 1000000; box-shadow: 0 0 10px #00D68F;
     }}
-
     #drd-tip {{
-      position: fixed; bottom: 105px; right: 28px; background: white; color: #1a1d29;
-      font-size: 0.82rem; font-weight: 600; padding: 9px 14px; border-radius: 16px 16px 4px 16px;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.18); white-space: nowrap; z-index: 999999;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      transition: opacity 0.5s; pointer-events: none;
+      position: fixed; bottom: 42px; right: 108px; background: #1A1D29; color: #FAFAFA;
+      padding: 10px 18px; border-radius: 12px; font-size: 0.82rem; font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3); border: 1px solid rgba(108,99,255,0.2);
+      z-index: 999998; pointer-events: none; transition: opacity 0.6s, transform 0.6s;
+      animation: drdIn 0.5s ease; font-family: 'Plus Jakarta Sans', sans-serif;
     }}
     #drd-tip::after {{
-      content: ''; position: absolute; bottom: -8px; right: 20px;
-      border: 8px solid transparent; border-top-color: white; border-bottom: 0;
+      content: ''; position: absolute; right: -14px; top: 12px;
+      border-left: 14px solid #1A1D29; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
     }}
-
     #drd-panel {{
-      position: fixed; bottom: 105px; right: 28px; width: 370px; height: 520px;
-      background: linear-gradient(160deg, #111827, #0d1117); border-radius: 24px;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(108,99,255,0.2);
-      display: flex; flex-direction: column; overflow: hidden; z-index: 999998;
-      transform: scale(0.85) translateY(20px); transform-origin: bottom right;
-      opacity: 0; pointer-events: none;
-      transition: all 0.3s cubic-bezier(0.34,1.2,0.64,1);
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      position: fixed; bottom: 105px; right: 28px; width: 380px; height: 520px;
+      background: #0d1117; border-radius: 24px; box-shadow: 0 12px 60px rgba(0,0,0,0.6);
+      z-index: 1000001; display: flex; flex-direction: column; overflow: hidden;
+      transform: translateY(20px) scale(0.95); opacity: 0; pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      border: 1px solid rgba(108,99,255,0.15); font-family: 'Plus Jakarta Sans', sans-serif;
     }}
-    #drd-panel.drd-open {{ opacity: 1; pointer-events: all; transform: scale(1) translateY(0); }}
-
+    #drd-panel.drd-open {{ transform: translateY(0) scale(1); opacity: 1; pointer-events: all; }}
+    
     .drd-hdr {{
-      background: linear-gradient(135deg, #1e2235, #252a3d); padding: 16px 18px;
-      display: flex; align-items: center; gap: 12px;
+      padding: 18px 20px; background: rgba(26,29,41,0.7); backdrop-filter: blur(12px);
+      display: flex; align-items: center; gap: 14px;
       border-bottom: 1px solid rgba(108,99,255,0.12); flex-shrink: 0;
     }}
     .drd-hav {{
@@ -257,153 +372,34 @@ def render_floating_chatbot(context: dict = None):
   `;
   doc.body.appendChild(container);
 
-  // --- Wire up event handlers ---
-  // Store state on doc.body to survive sidebar re-renders
+  // --- State Setup ---
   doc.body.__drd_api = {api_key_js};
   doc.body.__drd_groq = {groq_key_js};
   doc.body.__drd_context = {context_str_js};
   doc.body.__drd_sys = {sys_prompt_js};
   doc.body.__drd_last_notified = doc.body.__drd_context;
 
-  var hist = [];
-
-  var fab = doc.getElementById('drd-fab');
-  var panel = doc.getElementById('drd-panel');
-  var closeBtn = doc.getElementById('drd-close-btn');
-  var sendBtn = doc.getElementById('drd-send');
-  var inp = doc.getElementById('drd-inp');
-  var msgs = doc.getElementById('drd-msgs');
-  var tip = doc.getElementById('drd-tip');
-
-  function togglePanel() {{
-    var isOpen = panel.classList.toggle('drd-open');
-    if (isOpen) {{
-      fab.style.animation = 'none';
-      fab.style.transform = 'rotate(15deg) scale(0.9)';
-      if (tip) tip.style.display = 'none';
-      setTimeout(function() {{ inp.focus(); }}, 350);
-    }} else {{
-      fab.style.animation = 'drdFloat 3.5s ease-in-out infinite';
-      fab.style.transform = '';
-    }}
-  }}
-
-  fab.addEventListener('click', togglePanel);
-  closeBtn.addEventListener('click', togglePanel);
-
-  function addMsg(role, text) {{
-    var div = doc.createElement('div');
-    div.className = 'drd-msg' + (role === 'user' ? ' drd-u' : '');
-    var avHtml = role === 'user' ? '<span style="font-size:0.75rem;">&#128100;</span>' : {av_small_js};
-    div.innerHTML = '<div class="drd-av">' + avHtml + '</div><div class="drd-bubble">' + text.replace(/\\n/g, '<br>') + '</div>';
-    msgs.appendChild(div);
-    msgs.scrollTop = msgs.scrollHeight;
-    
-    // Expose to parent body for hot-reloading context messages
-    doc.body.__drd_addMsg = addMsg;
-    return div;
-  }}
-
-  function showTyping() {{
-    var div = doc.createElement('div');
-    div.className = 'drd-msg';
-    div.id = 'drd-typing';
-    div.innerHTML = '<div class="drd-av">{av_small}</div><div class="drd-bubble"><div class="drd-typing"><span></span><span></span><span></span></div></div>';
-    msgs.appendChild(div);
-    msgs.scrollTop = msgs.scrollHeight;
-    return div;
-  }}
-
-  function removeTyping() {{
-    var t = doc.getElementById('drd-typing');
-    if (t) t.remove();
-  }}
-
-  async function sendMessage() {{
-    var val = inp.value.trim();
-    if (!val) return;
-    inp.value = '';
-    addMsg('user', val);
-    hist.push({{ role: 'user', content: val }});
-    sendBtn.disabled = true;
-    var typ = showTyping();
-
-    // Prioritize Groq, Fallback to Gemini 2.0-Flash
-    var url = doc.body.__drd_groq ? 'https://api.groq.com/openai/v1/chat/completions' : 
-              'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + doc.body.__drd_api;
-    var usingGroq = !!doc.body.__drd_groq;
-    
-    var bodyMsgs = [{{ role: 'system', content: doc.body.__drd_sys }}].concat(hist.slice(-6));
-    var body = usingGroq ? JSON.stringify({{ model: "llama-3.3-70b-versatile", messages: bodyMsgs, temperature: 0.7 }}) 
-                        : JSON.stringify({{ contents: [{{ parts: [{{ text: bodyMsgs.map(m=>m.role+": "+m.content).join("\\n") }}] }}], generationConfig: {{ temperature: 0.7 }} }});
-    
-    try {{
-      var res = await fetch(url, {{
-        method: 'POST',
-        headers: {{ 'Content-Type': 'application/json', ...(usingGroq ? {{'Authorization': 'Bearer ' + doc.body.__drd_groq}} : {{}}) }},
-        body: body
-      }});
-      
-      // Handle Rate Limits (429)
-      if (res.status === 429) {{
-          msgs.removeChild(typ);
-          addMsg('bot', 'I’m taking a quick 60-second break to rest my brain! Please ask me again in a minute. ☕');
-          sendBtn.disabled = false;
-          return;
-      }}
-
-      var data = await res.json();
-      var botTxt = "";
-      
-      if (usingGroq) {{
-          if (data.choices && data.choices[0]) botTxt = data.choices[0].message.content;
-          else throw new Error('Groq format mismatch');
-      }} else {{
-          if (data.candidates && data.candidates[0]) botTxt = data.candidates[0].content.parts[0].text;
-          else if (data.error) {{
-              if (data.error.status === 'RESOURCE_EXHAUSTED') {{
-                  msgs.removeChild(typ);
-                  addMsg('bot', 'My AI batteries are recharging! Please try again in 60 seconds. 🔋');
-                  sendBtn.disabled = false;
-                  return;
-              }}
-              throw new Error(data.error.message);
-          }}
-          else throw new Error('Gemini format mismatch');
-      }}
-      
-      msgs.removeChild(typ);
-      addMsg('bot', botTxt);
-      hist.push({{ role: 'assistant', content: botTxt }});
-    }} catch (err) {{
-      console.error('Dr. Docyote Error:', err);
-      msgs.removeChild(typ);
-      addMsg('bot', 'I encountered a brief connection issue. Please try again in a moment! ⚠️');
-    }}
-    sendBtn.disabled = false;
-    inp.focus();
-  }}
-
-  sendBtn.addEventListener('click', sendMessage);
-
-  // Keyboard: Enter to send
-  inp.addEventListener('keydown', function(e) {{
+  // --- Wire Listeners ---
+  doc.getElementById('drd-fab').onclick = togglePanel;
+  doc.getElementById('drd-close-btn').onclick = togglePanel;
+  doc.getElementById('drd-send').onclick = sendMessage;
+  doc.getElementById('drd-inp').onkeydown = function(e) {{
     if (e.key === 'Enter' && !e.shiftKey) {{
       e.preventDefault();
       sendMessage();
     }}
-  }});
+  }};
 
-  // --- Initial State ---
+  // --- Initial Message ---
   addMsg('bot', {welcome_msg_js});
-
   if (doc.body.__drd_context !== "None") {{
      var contextMsg = 'I see you just finished a symptom check for: ' + doc.body.__drd_context.split('|')[0].replace('Symptoms:', '') + '. How can I help you with these results?';
      addMsg('bot', contextMsg);
   }}
 
-  // Fade tooltip after 5s
+  // Fade tooltip
   setTimeout(function() {{
+    var tip = doc.getElementById('drd-tip');
     if (tip) tip.style.opacity = '0';
     setTimeout(function() {{ if (tip) tip.style.display = 'none'; }}, 600);
   }}, 5000);

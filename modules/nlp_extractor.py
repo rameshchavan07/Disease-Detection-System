@@ -2,43 +2,77 @@ import re
 import os
 from functools import lru_cache
 from google import genai
-from config.settings import GEMINI_API_KEY
+from config.settings import GEMINI_API_KEYS, GROQ_API_KEY
+from groq import Groq
 from modules.logger import get_logger
+import streamlit as st
 
 logger = get_logger("nlp_extractor")
 
-@lru_cache(maxsize=128)
-def translate_to_english(text: str) -> str:
-    """Uses Gemini to translate medical symptoms into clinical English."""
-    if not GEMINI_API_KEY:
-        logger.warning("GEMINI_API_KEY is missing. Skipping translation.")
+def groq_translate(text: str) -> str:
+    """Fallback translation using Groq (Llama-3)."""
+    if not GROQ_API_KEY:
         return text
-    
     try:
-        # 1. Initialize modern client
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        
+        client = Groq(api_key=GROQ_API_KEY)
         prompt = f"Translate the following medical symptoms/description to concise clinical English. If it is already in English, return it exactly as it is. Output only the English translation: \"{text}\""
         
-        # 2. Modern generation call
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
+        response = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+            temperature=0.7
         )
-        
-        translated_text = response.text.strip()
-        return translated_text if translated_text else text
-        
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        # Check for Quota Exceeded (429) in the error string or status
-        error_msg = str(e).lower()
-        if "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
-            logger.warning(f"Gemini Quota Exceeded (429): {e}")
-            return "[[QUOTA_EXCEEDED]]"
-        
-        logger.error(f"Gemini Translation Error: {e}")
-        # Fallback to original text if API fails
+        logger.error(f"Groq Translation Fallback Error: {e}")
         return text
+
+@lru_cache(maxsize=128)
+def translate_to_english(text: str) -> str:
+    """Uses a Pool of Gemini keys to translate symptoms. Rotates keys on 429 errors."""
+    if not GEMINI_API_KEYS:
+        logger.warning("No Gemini keys found in pool. Using Groq fallback.")
+        return groq_translate(text)
+    
+    # Track the current key index in streamlit session state
+    if "gemini_key_index" not in st.session_state:
+        st.session_state.gemini_key_index = 0
+    
+    original_idx = st.session_state.gemini_key_index
+    num_keys = len(GEMINI_API_KEYS)
+    
+    # Try all keys in the pool starting from current index
+    for attempt in range(num_keys):
+        current_idx = (original_idx + attempt) % num_keys
+        api_key = GEMINI_API_KEYS[current_idx]
+        
+        try:
+            client = genai.Client(api_key=api_key)
+            prompt = f"Translate the following medical symptoms/description to concise clinical English. If it is already in English, return it exactly as it is. Output only the English translation: \"{text}\""
+            
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=prompt
+            )
+            
+            # If successful, update the session index to keep using this key
+            st.session_state.gemini_key_index = current_idx
+            translated_text = response.text.strip()
+            return translated_text if translated_text else text
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "429" in error_msg or "resource_exhausted" in error_msg:
+                logger.warning(f"Key {current_idx} Quota Exceeded. Rotating to next key...")
+                continue # Try next key
+            
+            logger.error(f"Gemini (Key {current_idx}) Error: {e}")
+            break # Non-quota error, don't keep rotating for this request
+    
+    # If all Gemini keys fail, use Groq as final reserve
+    logger.info("All Gemini keys exhausted. Falling back to Groq Reserve Engine.")
+    st.toast("Gemini is busy; using Groq Reserve Engine... 🚀")
+    return groq_translate(text)
 
 # Synonym dictionary for better matching
 SYNONYMS = {
