@@ -1,117 +1,123 @@
-# 🧠 MedDetect AI — Multi-Disease Detection System
+# 🧠 MedDetect AI: Advanced Clinical Decision Support System
 
-<div align="center">
-  <img src="https://img.shields.io/badge/AI-Medical-6C63FF?style=for-the-badge&logo=ai&logoColor=white" />
-  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
-  <img src="https://img.shields.io/badge/Accuracy-94.6%25-00D68F?style=for-the-badge" />
-</div>
-
----
-
-## 🌟 Overview
-
-**MedDetect AI** is a cutting-edge clinical decision support system designed to bridge the gap between initial symptoms and actionable medical insights. Powered by a **Random Forest** machine learning classifier and **Google's Gemini AI**, the platform offers a premium, high-fidelity user experience for healthcare screening.
-
-It analyzes over **382+ distinct symptoms** to predict more than **221+ diseases** with high precision.
+[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75FF?style=flat-square&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![Groq](https://img.shields.io/badge/Groq-f55036?style=flat-square&logo=openai&logoColor=white)](https://groq.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 
 ---
 
-## 🚀 Key Features
+## 🔬 Executive Summary
 
-- **🔬 Smart Symptom Analysis**: Input symptoms via selection or natural language. The system extracts medical keywords using a custom NLP engine.
-- **🤖 ML Prediction Engine**: A Random Forest model (v2.4) trained on 9,400+ clinical samples provides prioritized diagnoses with confidence intervals.
-- **💬 Dr. Docyote (Gemini AI)**: A context-aware chatbot that acts as an initial medical assistant, answering health-related queries with empathy.
-- **🛡️ Severity & Risk Assessment**: Real-time risk scoring for conditions, flagging "Critical" or "High" risk alerts for emergency conditions.
-- **📄 Professional PDF Reports**: Instantly generate clinical reports containing predictions, precautions, and specialist recommendations.
-- **🏥 Clinic Locator**: Find nearby specialists based on predicted conditions (Cardiologists, Neurologists, etc.).
-- **🔐 Secure Authentication**: Integrated with Google OAuth and Supabase for persistent health history tracking.
+**MedDetect AI** is an enterprise-grade medical screening platform that leverages **Random Forest (v2.4)** classifiers and **Large Language Models (Gemini-1.5, Llama-3)** to provide high-precision disease predictions based on patient symptoms. Designed with a focus on **Glassmorphism UI/UX**, the system offers a seamless transition from raw symptom input to clinical PDF reports and real-world specialist recruitment.
 
 ---
 
-## 📊 Data Flow Diagram
+## 📊 Technical Architecture
 
+### 1. The NLP Extraction Pipeline
+Unlike traditional checkers, MedDetect AI uses a **Negation-Aware NLP Engine**.
+- **Translation Layer**: Multi-key rotation (Gemini/Groq) to support **Hindi, Hinglish, and English** descriptions.
+- **Negation Handling**: Logic in `nlp_extractor.py` ensures that inputs like *"I have a headache but **no fever**"* correctly filter out the fever symptom.
+- **Synonym Resolver**: A 150+ entry dictionary maps colloquial terms (e.g., "throw up") to clinical features (e.g., "vomiting").
+
+### 2. Machine Learning Core
+- **Model**: Random Forest Classifier with **200 estimators**.
+- **Training**: 9,400+ samples across **221+ disease classes** and **382+ symptom features**.
+- **Metrics**: Achieves a localized testing accuracy of **94.6%**.
+
+### 3. Integrated Global Interaction
 ```mermaid
-graph TD
-    User([User]) -->|Natural Language/Menu| NLP[NLP Extractor]
-    NLP -->|Feature Vector| ML[ML Engine]
-    ML -->|Random Forest v2.4| Pred{Prediction}
-    Pred -->|Top Results| Info[Disease Info KB]
-    Info -->|Remedies & Severity| UI[Streamlit UI]
-    UI -->|Interactive Dashboard| User
-    UI -->|Store Records| DB[(Supabase/Auth)]
-    UI -->|Generate| PDF[PDF Generator]
-    PDF -->|Download| User
-    UI <-->|AI Consultation| Gemini[Dr. Docyote Chatbot]
+graph LR
+    subgraph "Local Logic"
+        App[Streamlit Frontend]
+        ML[ML Inference Engine]
+        NLP[NLP Pre-processing]
+        PDF[PDF Generator]
+    end
+    
+    subgraph "SaaS API Layers"
+        Gemini[(Google Gemini AI Pool)]
+        Groq[(Groq Llama-3 Fallback)]
+        Supabase[(Supabase DB & Auth)]
+        OAuth[(Google OAuth)]
+    end
+
+    App <--> NLP
+    NLP <--> Gemini
+    NLP <--> Groq
+    App <--> ML
+    App <--> Supabase
+    Supabase <--> OAuth
+    App --> PDF
 ```
 
 ---
 
-## 📂 Project Architecture
+## 🌟 Comprehensive Feature Set
 
-### 📁 Root Files
-- [app.py](file:///d:/DSP/app.py): The main landing page and global UI configuration.
-- [.env](file:///d:/DSP/.env): Secrets and API keys (Gemini, Supabase, Google OAuth).
-- [requirements.txt](file:///d:/DSP/requirements.txt): Environment dependencies.
+### 🔍 Smart Symptom Checker
+Seamlessly combine structured menu selection with unstructured text descriptions.
+- **Semantic Mapping**: NLP automatically converts "sir dard" or "tummy hurts" into standardized dataset features.
+- **Live Triage**: Immediate severity classification (Low, High, Critical) to guide user urgency.
 
-### 📁 `/modules` — Core Logic
-| Module | Description |
-| :--- | :--- |
-| `ml_engine.py` | Model loading, feature engineering, and inference logic. |
-| `nlp_extractor.py` | Converts text or speech into structured symptom lists. |
-| `disease_info.py` | Huge KB containing descriptions, causes, and specialists for 220+ diseases. |
-| `pdf_generator.py` | High-fidelity PDF reporting system using FPDF. |
-| `floating_chat.py` | Real-time "Dr. Docyote" interface using Gemini-1.5-Pro. |
-| `database.py` | Connectivity to Firebase/Supabase for report storage. |
-| `doctor_locator.py` | Google Maps integration for finding local clinics. |
-| `shared_ui.py` | Reusable UI components (Glassmorphism containers, custom footers). |
+### 🤖 "Dr. Docyote" AI Assistant
+An empathetic, context-aware chatbot implemented as a persistent floating widget.
+- **Context Injection**: Dr. Docyote is "pre-briefed" on your latest symptom checker results to answer follow-up questions intelligently.
+- **Resilient UI**: Built with a sophisticated "Brain Re-Linking" mechanism that maintains state across page reloads.
 
-### 📁 `/pages` — Navigation
-- `0_🔑_Sign_In.py`: Authentication portal.
-- `1_🔍_Symptom_Checker.py`: Primary diagnostic tool.
-- `2_📊_Report_History.py`: User session history and file downloads.
-- `3_👨‍⚕️_Book_Appointment.py`: Clinic locator and scheduling helper.
+### 🏥 Hyper-Local Doctor Discovery
+Automatically connects AI diagnosis with real-world care.
+- **Specialist Auto-Mapping**: Maps predicted diseases to the correct specialist (e.g., *Endocarditis* → *Cardiologist*).
+- **LLM-Powered Search**: Uses Llama-3.3-70B to find **real, verified clinics** (names, addresses, phones) in your specific city via IP geolocation.
 
-### 📁 `/models`
-- `trained_model_v2.4.pkl`: The current production-ready Random Forest model.
-- `train_model.py`: Script to retrain the model on new datasets.
-- `metadata.json`: Model version, accuracy metrics, and class mappings.
+### 📄 Pro-Grade PDF Reporting
+Generate clinical-ready documentation for sharing with healthcare providers.
+- **Clinical Content**: Includes disease descriptions, causes, precautions, and actionable home care.
+- **High-Fidelity Layout**: Branded, color-coded based on severity, and includes clickable links to mapped specialists.
+
+### 🔐 Secure Patient History
+Full-scale authentication and persistence.
+- **OAuth Sync**: Log in with Google to sync history across devices.
+- **History Portal**: View, filter, download, or securely delete past health assessments via Supabase.
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ Infrastructure Setup
 
-### 1. Clone & Set Up Environment
+### 1. Environment Preparation
 ```bash
-git clone https://github.com/rameshchavan07/Disease-Detection-System.git
-cd Disease-Detection-System
+# Recommendation: Python 3.10+
 python -m venv .venv
-source .venv/bin/scripts/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory:
+### 2. Secret Inventory (`.env`)
+Required variables for full feature parity:
 ```env
-GOOGLE_API_KEY=your_gemini_key
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-GOOGLE_CLIENT_ID=your_oauth_id
+GOOGLE_API_KEY=xxx         # Primary Gemini Key
+GEMINI_API_KEYS=key1,key2  # (Optional) Multi-key pool for rotation
+GROQ_API_KEY=xxx           # Fallback for translation & doctor search
+SUPABASE_URL=xxx           # DB connection
+SUPABASE_KEY=xxx           # DB API key
 ```
 
-### 3. Run the Application
+### 3. Deployment
 ```bash
 streamlit run app.py
 ```
 
 ---
 
-## 🏥 Medical Disclaimer
-> [!WARNING]
-> This system is for **informational and educational purposes only**. It does NOT replace professional medical advice, diagnosis, or treatment. Always seek the advice of a qualified healthcare provider for any medical concerns. **In case of an emergency, call your local emergency services (911/112) immediately.**
+## 🏥 Critical Disclaimer
+> [!CAUTION]
+> **MEDDETECT AI IS A STATISTICAL SCREENING TOOL.** It is not a clinical diagnostic device. The results provided are probabilities based on training data. **Always consult a human healthcare professional.** In case of a medical emergency, contact emergency services (911/112) immediately.
 
 ---
 
 <div align="center">
-  <p>Made with ❤️ by <b>Ramesh Chavan</b> & AI</p>
+ <p>Built with precision and empathy by <b>Ramesh Chavan</b></p>
 </div>
