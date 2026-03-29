@@ -1,118 +1,117 @@
-<<<<<<< HEAD
+# 🧠 MedDetect AI — Multi-Disease Detection System
 
-=======
-# 🩺 MedDetect AI - Advanced Intelligent Health Companion
-
-![MedDetect AI Banner](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge)
-![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Groq](https://img.shields.io/badge/AI_Powered-Groq-f55036?style=for-the-badge)
-
-MedDetect AI is a state-of-the-art, multi-modal web application built entirely on Python and Streamlit. It modernizes clinical symptom checking by merging traditional ML with extremely fast Generative AI capabilities. Features include voice-to-text symptom parsing, diagnostic probability using Random Forests, dynamic geolocation of real-world doctors, and clinic-grade PDF generation.
+<div align="center">
+  <img src="https://img.shields.io/badge/AI-Medical-6C63FF?style=for-the-badge&logo=ai&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
+  <img src="https://img.shields.io/badge/Accuracy-94.6%25-00D68F?style=for-the-badge" />
+</div>
 
 ---
 
-## 🌟 Core Features
+## 🌟 Overview
 
-- **🗣️ "Dr. Docyote" Voice Interface:** Fully hands-free symptom checking utilizing **Groq Whisper** to instantly transcribe spoken descriptions with lightning speed and supreme accuracy.
-- **🧠 Generative NLP Extraction:** Converts messy, natural-language human complaints into structured medical symptom matrices instantly.
-- **📊 Scikit-Learn Random Forest Diagnostic Engine:** A trained Decision Tree array resolving highly accurate multi-class predictions loaded into a cached, instant-prediction memory engine (`@st.cache_resource`).
-- **📍 Real-Time Medical Geo-Locator:** Dynamically utilizes IP tracing and **Llama 3 AI** to pinpoint real-world recommended specialists, clinics, and phone numbers directly injected into the results map.
-- **📄 Clinic-Grade PDF Documentation:** Generates robust, printable Medical Reports (`FPDF2`). Highlighted dynamic warning severities and interactive Google Maps links natively embedded inside the PDF format.
-- **🔐 True Serverless Authentication & Memory:** Backed exclusively by **Supabase**. Implements native JWT magic email & passwordless Google Auth perfectly persisted across sessions and tabs. All results are structurally stored in `postgres` for permanent historical lookup.
-- **🤖 Omnipresent AI Assistant:** A custom-engineered Glassmorphism iFrame widget natively injected into the Streamlit DOM tree to provide persistent "Dr. Docyote" chat navigation natively on all pages.
+**MedDetect AI** is a cutting-edge clinical decision support system designed to bridge the gap between initial symptoms and actionable medical insights. Powered by a **Random Forest** machine learning classifier and **Google's Gemini AI**, the platform offers a premium, high-fidelity user experience for healthcare screening.
+
+It analyzes over **382+ distinct symptoms** to predict more than **221+ diseases** with high precision.
 
 ---
 
-## 🛠️ Technology Stack
+## 🚀 Key Features
 
-| Component | Technology |
-|---|---|
-| **Frontend UI/UX** | Streamlit, Custom CSS Injection (Glassmorphism design) |
-| **Authentication/DB**| Supabase (Auth & Postgres via REST) |
-| **Voice Processing** | `audio-recorder-streamlit`, Groq `whisper-large-v3` |
-| **Generative AI** | Groq (`llama-3.3-70b-versatile`), Google Gemini Flash |
-| **Machine Learning** | Scikit-Learn (`joblib`, Random Forest), Pandas, Numpy |
-| **Document Generator**| `fpdf2` |
-| **Environment** | Python 3.10+ |
+- **🔬 Smart Symptom Analysis**: Input symptoms via selection or natural language. The system extracts medical keywords using a custom NLP engine.
+- **🤖 ML Prediction Engine**: A Random Forest model (v2.4) trained on 9,400+ clinical samples provides prioritized diagnoses with confidence intervals.
+- **💬 Dr. Docyote (Gemini AI)**: A context-aware chatbot that acts as an initial medical assistant, answering health-related queries with empathy.
+- **🛡️ Severity & Risk Assessment**: Real-time risk scoring for conditions, flagging "Critical" or "High" risk alerts for emergency conditions.
+- **📄 Professional PDF Reports**: Instantly generate clinical reports containing predictions, precautions, and specialist recommendations.
+- **🏥 Clinic Locator**: Find nearby specialists based on predicted conditions (Cardiologists, Neurologists, etc.).
+- **🔐 Secure Authentication**: Integrated with Google OAuth and Supabase for persistent health history tracking.
 
 ---
 
-## ⚙️ Environment Configuration
+## 📊 Data Flow Diagram
 
-MedDetect relies on `.env` variables to perform Cloud interactions. Create a `.env` file in the root of your directory with the following keys:
-
-```env
-# Supabase Configuration
-SUPABASE_URL="https://YOUR-URL.supabase.co"
-SUPABASE_KEY="YOUR-ANON-PUBLIC-KEY"
-
-# AI Provider Keys
-GROQ_API_KEY="gsk_..."
-GEMINI_API_KEY="AIza..."
+```mermaid
+graph TD
+    User([User]) -->|Natural Language/Menu| NLP[NLP Extractor]
+    NLP -->|Feature Vector| ML[ML Engine]
+    ML -->|Random Forest v2.4| Pred{Prediction}
+    Pred -->|Top Results| Info[Disease Info KB]
+    Info -->|Remedies & Severity| UI[Streamlit UI]
+    UI -->|Interactive Dashboard| User
+    UI -->|Store Records| DB[(Supabase/Auth)]
+    UI -->|Generate| PDF[PDF Generator]
+    PDF -->|Download| User
+    UI <-->|AI Consultation| Gemini[Dr. Docyote Chatbot]
 ```
 
 ---
 
-## 🚀 Installation & Local Setup
+## 📂 Project Architecture
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/MedDetect-AI.git
-   cd MedDetect-AI
-   ```
+### 📁 Root Files
+- [app.py](file:///d:/DSP/app.py): The main landing page and global UI configuration.
+- [.env](file:///d:/DSP/.env): Secrets and API keys (Gemini, Supabase, Google OAuth).
+- [requirements.txt](file:///d:/DSP/requirements.txt): Environment dependencies.
 
-2. **Establish a Virtual Environment**
-   ```bash
-   python -m venv .venv
-   # Windows Activation:
-   .venv\Scripts\activate
-   # Mac/Linux Activation:
-   source .venv/bin/activate
-   ```
+### 📁 `/modules` — Core Logic
+| Module | Description |
+| :--- | :--- |
+| `ml_engine.py` | Model loading, feature engineering, and inference logic. |
+| `nlp_extractor.py` | Converts text or speech into structured symptom lists. |
+| `disease_info.py` | Huge KB containing descriptions, causes, and specialists for 220+ diseases. |
+| `pdf_generator.py` | High-fidelity PDF reporting system using FPDF. |
+| `floating_chat.py` | Real-time "Dr. Docyote" interface using Gemini-1.5-Pro. |
+| `database.py` | Connectivity to Firebase/Supabase for report storage. |
+| `doctor_locator.py` | Google Maps integration for finding local clinics. |
+| `shared_ui.py` | Reusable UI components (Glassmorphism containers, custom footers). |
 
-3. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 📁 `/pages` — Navigation
+- `0_🔑_Sign_In.py`: Authentication portal.
+- `1_🔍_Symptom_Checker.py`: Primary diagnostic tool.
+- `2_📊_Report_History.py`: User session history and file downloads.
+- `3_👨‍⚕️_Book_Appointment.py`: Clinic locator and scheduling helper.
 
-4. **Boot the Streamlit Server**
-   ```bash
-   streamlit run app.py
-   ```
-   *The application will launch on `http://localhost:8501`.*
-
----
-
-## 💾 Database Specifics (Supabase)
-
-To properly operate this locally, your Supabase project must be configured with a native table matching this schema:
-
-**Table Name:** `predictions`
-| Column Name | Type | Description |
-|---|---|---|
-| `id` | `uuid` | Primary Key, auto-generated |
-| `created_at` | `timestampz` | Defaults to `now()` |
-| `user_id` | `uuid` | Maps to the Supabase authenticated User ID |
-| `symptoms` | `json` / `text` | Array string of symptoms mapped during the session |
-| `predicted_disease` | `text` | The \#1 ranked Scikit-Learn prediction |
-| `confidence` | `numeric` | Percentage ratio mapping the prediction array |
-
-*Note: You must also disable Row Level Security (RLS) or accurately implement an RLS policy granting auth users `INSERT` and `SELECT` on `predictions` where `user_id = auth.uid()`.*
+### 📁 `/models`
+- `trained_model_v2.4.pkl`: The current production-ready Random Forest model.
+- `train_model.py`: Script to retrain the model on new datasets.
+- `metadata.json`: Model version, accuracy metrics, and class mappings.
 
 ---
 
-## ☁️ Deployment instructions (Streamlit Community Cloud)
+## 🛠️ Installation & Setup
 
-This framework is 100% capable of Serverless PaaS deployment.
+### 1. Clone & Set Up Environment
+```bash
+git clone https://github.com/rameshchavan07/Disease-Detection-System.git
+cd Disease-Detection-System
+python -m venv .venv
+source .venv/bin/scripts/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-1. Ensure `.env` and `.venv/` are listed in your `.gitignore` file.
-2. Push your master branch to GitHub.
-3. Establish a new app via **Share.Streamlit.io**.
-4. Point the main filepath to `app.py`.
-5. Enter your raw `.env` contents natively into the **Streamlit Secrets Advanced Options** block before hitting deploy!
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory:
+```env
+GOOGLE_API_KEY=your_gemini_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+GOOGLE_CLIENT_ID=your_oauth_id
+```
+
+### 3. Run the Application
+```bash
+streamlit run app.py
+```
 
 ---
 
-*Open Sourced & Built dynamically with Advanced LLM Agentic Coding.*
->>>>>>> 513b8a8 (Launch MedDetect AI)
+## 🏥 Medical Disclaimer
+> [!WARNING]
+> This system is for **informational and educational purposes only**. It does NOT replace professional medical advice, diagnosis, or treatment. Always seek the advice of a qualified healthcare provider for any medical concerns. **In case of an emergency, call your local emergency services (911/112) immediately.**
+
+---
+
+<div align="center">
+  <p>Made with ❤️ by <b>Ramesh Chavan</b> & AI</p>
+</div>
