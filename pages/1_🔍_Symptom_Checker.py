@@ -24,9 +24,10 @@ logger = get_logger("symptom_checker")
 st.set_page_config(page_title="Symptom Checker - MedDetect AI", page_icon="🔍", layout="wide")
 
 # Auth Check
-if "user_id" not in st.session_state or not st.session_state.user_id:
-    st.error("🔒 Please sign in from the **🔑 Sign In** page to access the Symptom Checker.")
-    st.info("Creating a free account allows you to securely save your prediction history.")
+if "user_id" not in st.session_state or not st.session_state.get('user_id'):
+    st.warning("👋 Welcome! Please sign in to save your reports to history.")
+elif st.session_state.get("is_doctor", False):
+    st.warning("🩺 **This page is for patients.** Please navigate to the Doctor Portal.")
     st.stop()
 
 # Inject shared premium CSS & sidebar
@@ -284,10 +285,25 @@ with col2:
 if analyze_btn and selected_symptoms:
     st.markdown("---")
     
+    # Rate limiting: 1 prediction per 10 seconds
+    import time as _time
+    last_pred_time = st.session_state.get("_last_prediction_time", 0)
+    if _time.time() - last_pred_time < 10:
+        st.warning("⏳ Please wait a few seconds between predictions.")
+        st.stop()
+    st.session_state["_last_prediction_time"] = _time.time()
+    
     progress_bar = st.progress(0, text="🧠 Initializing AI model...")
     import time
     progress_bar.progress(30, text="🔄 Processing symptoms...")
-    predictions = predict_disease(selected_symptoms, top_k=5)
+    
+    try:
+        predictions = predict_disease(selected_symptoms, top_k=5)
+    except Exception as e:
+        logger.error(f"Prediction failed: {e}")
+        predictions = []
+        st.error("⚠️ An error occurred during prediction. Please try again.")
+    
     progress_bar.progress(70, text="📊 Generating predictions...")
     time.sleep(0.3)
     progress_bar.progress(100, text="✅ Analysis complete!")
@@ -302,7 +318,10 @@ if analyze_btn and selected_symptoms:
     # Save to DB
     if predictions:
         user_id = st.session_state.user_id
-        save_prediction(user_id, selected_display, predictions)
+        try:
+            save_prediction(user_id, selected_display, predictions)
+        except Exception as e:
+            logger.error(f"Failed to save prediction: {e}")
 
 # Show results from session state (persists across name input reruns)
 predictions = st.session_state.get('last_predictions', None)

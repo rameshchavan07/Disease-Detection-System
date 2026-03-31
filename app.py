@@ -5,6 +5,7 @@ Main Streamlit Application Entry Point
 #streamlit run app.py
 import streamlit as st
 from modules.logger import get_logger
+from config.settings import APP_NAME, APP_VERSION_DISPLAY, TOTAL_DISEASES, TOTAL_SYMPTOMS, MODEL_ACCURACY_DISPLAY, TRAINING_SAMPLES
 
 logger = get_logger("app")
 # Page config MUST be first Streamlit command
@@ -467,12 +468,12 @@ with st.sidebar:
     AI-powered disease detection using ML. Analyzes symptoms to predict diseases with confidence scores.
     </p>""", unsafe_allow_html=True)
     st.markdown("---")
-    st.caption("v2.0.0 • Built with ❤️ & AI")
+    st.caption(f"{APP_VERSION_DISPLAY} • Built with ❤️ & AI")
 
 # ── Main Content: Home Page ──
 
 # Hero Section
-st.markdown("""
+st.markdown(f"""
 <div class="hero-container">
     <div class="hero-badge">✨ AI-POWERED MEDICAL ASSISTANT</div>
     <div class="hero-title">🧠 MedDetect AI</div>
@@ -482,19 +483,19 @@ st.markdown("""
     </div>
     <div class="hero-stats">
         <div class="stat-item">
-            <div class="stat-number">221+</div>
+            <div class="stat-number">{TOTAL_DISEASES}</div>
             <div class="stat-label">Diseases</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">382+</div>
+            <div class="stat-number">{TOTAL_SYMPTOMS}</div>
             <div class="stat-label">Symptoms</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">94.6%</div>
+            <div class="stat-number">{MODEL_ACCURACY_DISPLAY}</div>
             <div class="stat-label">Accuracy</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">9400+</div>
+            <div class="stat-number">{TRAINING_SAMPLES}</div>
             <div class="stat-label">Training Samples</div>
         </div>
     </div>
@@ -584,9 +585,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Footer
-st.markdown("""
+st.markdown(f"""
 <div class="footer">
-    MedDetect AI v2.0 • Powered by Machine Learning & Google Gemini<br>
+    {APP_NAME} {APP_VERSION_DISPLAY} • Powered by Machine Learning &amp; Google Gemini<br>
     Made with ❤️ for better health awareness
 </div>
 """, unsafe_allow_html=True)

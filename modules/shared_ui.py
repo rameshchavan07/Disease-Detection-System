@@ -166,6 +166,52 @@ section[data-testid="stSidebar"] .stMarkdown h3 {
 
 def render_sidebar():
     """Render the consistent premium sidebar with user profile and navigation."""
+    
+    # ── Session Timeout Enforcement ──
+    import datetime
+    from config.settings import SESSION_TIMEOUT_MINUTES
+    if st.session_state.get("user_id"):
+        now = datetime.datetime.now()
+        if "login_time" not in st.session_state:
+            st.session_state.login_time = now
+        elapsed = (now - st.session_state.login_time).total_seconds() / 60
+        if elapsed > SESSION_TIMEOUT_MINUTES:
+            st.session_state.user_id = None
+            st.session_state.user_email = None
+            st.session_state.pop("login_time", None)
+            st.toast("Session expired. Please sign in again.", icon="⏰")
+            st.rerun()
+        # Refresh on activity
+        st.session_state.login_time = now
+    # Check if user is a doctor
+    is_doctor = False
+    if st.session_state.get("user_id"):
+        if "is_doctor" not in st.session_state:
+            from modules.database import get_doctor_by_user_id
+            doc = get_doctor_by_user_id(st.session_state.user_id)
+            st.session_state.is_doctor = doc is not None
+        is_doctor = st.session_state.get("is_doctor", False)
+
+    # Hide patient pages for doctors natively using CSS
+    if is_doctor:
+        st.markdown("""
+        <style>
+        ul[data-testid="stSidebarNavItems"] li:has(a[href*="Symptom_Checker"]),
+        ul[data-testid="stSidebarNavItems"] li:has(a[href*="Book_Appointment"]),
+        ul[data-testid="stSidebarNavItems"] li:has(a[href*="Report_History"]) {
+            display: none !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <style>
+        ul[data-testid="stSidebarNavItems"] li:has(a[href*="Doctor_Portal"]) {
+            display: none !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
     with st.sidebar:
         st.markdown("### 🧠 MedDetect AI")
 
@@ -227,23 +273,41 @@ def render_sidebar():
         st.markdown("---")
 
         # Quick Navigation
-        st.markdown("""
-        <div style="margin-bottom: 1rem;">
-            <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(250,250,250,0.3); margin-bottom: 0.6rem; padding-left: 0.3rem;">Navigation</div>
-            <a href="/" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
-                <span>🏠</span> Home
-            </a>
-            <a href="/Sign_In" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
-                <span>🔑</span> Sign In
-            </a>
-            <a href="/Symptom_Checker" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
-                <span>🔍</span> Symptom Checker
-            </a>
-            <a href="/Report_History" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s;">
-                <span>📊</span> Report History
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
+        nav_html = f"""
+<div style="margin-bottom: 1rem;">
+<div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(250,250,250,0.3); margin-bottom: 0.6rem; padding-left: 0.3rem;">Navigation</div>
+<a href="/" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
+<span>🏠</span> Home
+</a>
+<a href="/Sign_In" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
+<span>🔑</span> Sign In
+</a>
+"""
+        if is_doctor:
+            nav_html += """
+<a href="/Doctor_Portal" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
+<span>🩺</span> Doctor Portal
+</a>
+"""
+        else:
+            nav_html += """
+<a href="/Symptom_Checker" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
+<span>🔍</span> Symptom Checker
+</a>
+<a href="/Report_History" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
+<span>📊</span> Report History
+</a>
+<a href="/Book_Appointment" target="_self" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 10px; color: rgba(250,250,250,0.7); text-decoration: none; font-size: 0.85rem; transition: all 0.2s; margin-bottom: 0.2rem;">
+<span>👨‍⚕️</span> Book Appointment
+</a>
+<div style="margin: 1rem 0; height: 1px; background: rgba(255,255,255,0.05);"></div>
+<a href="/Doctor_Portal" target="_self" style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.8rem; border-radius: 10px; background: rgba(0,214,143,0.05); border: 1px solid rgba(0,214,143,0.2); color: #00D68F; text-decoration: none; font-size: 0.80rem; font-weight: 600; transition: all 0.2s;">
+<span style="display: flex; align-items: center; gap: 0.5rem;"><span>🏥</span> Provider Access</span>
+<span style="font-size: 0.7rem; opacity: 0.8;">Register →</span>
+</a>
+"""
+        nav_html += "</div>"
+        st.markdown(nav_html, unsafe_allow_html=True)
 
         st.markdown("---")
         st.markdown("""

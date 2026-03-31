@@ -63,7 +63,7 @@ def train():
     }
     
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    joblib.dump(model_data, MODEL_PATH)
+    joblib.dump(model_data, MODEL_PATH, compress=3)  # Compress to reduce ~2GB → ~200MB
     
     # Save Metadata
     import datetime

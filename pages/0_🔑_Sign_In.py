@@ -251,11 +251,20 @@ with tab1:
                     
 with tab2:
     st.subheader("Join MedDetect AI")
-    st.caption("Create a free account to track your health predictions.")
+    
+    role = st.radio("I am signing up as a:", ["👤 Patient", "🩺 Doctor / Healthcare Provider"], horizontal=True)
+    
+    if "Patient" in role:
+        st.info("Create a free account to track symptoms, view AI reports, and book appointments with verified doctors.")
+    else:
+        st.info("Create a secure provider account. You'll be directed to the Doctor Portal to verify your credentials, write digital prescriptions, and manage appointments.")
+        
     signup_email = st.text_input("Email", key="signup_email", placeholder="you@example.com")
     signup_password = st.text_input("Password", type="password", help="Must be at least 6 characters.", key="signup_password")
     
-    if st.button("Create Account", type="primary", use_container_width=True):
+    btn_text = "Create Patient Account" if "Patient" in role else "Create Provider Account"
+    
+    if st.button(btn_text, type="primary", use_container_width=True):
         if not signup_email or not signup_password:
             st.warning("Please enter both email and password.")
         elif len(signup_password) < 6:

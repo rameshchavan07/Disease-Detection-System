@@ -13,8 +13,15 @@ load_dotenv()
 # ──────────────────────────────────────────
 APP_NAME = "MedDetect AI"
 APP_VERSION = "2.0.0"
+APP_VERSION_DISPLAY = f"v{APP_VERSION}"
 APP_DESCRIPTION = "AI-Powered Multi-Disease Detection System"
 APP_ICON = "🧠"
+
+# Stats displayed on the home page (update when retraining model)
+TOTAL_DISEASES = "221+"
+TOTAL_SYMPTOMS = "382+"
+MODEL_ACCURACY_DISPLAY = "94.6%"
+TRAINING_SAMPLES = "9,400+"
 
 # ──────────────────────────────────────────
 # Paths

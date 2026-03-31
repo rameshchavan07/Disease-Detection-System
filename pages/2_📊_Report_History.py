@@ -18,6 +18,9 @@ st.set_page_config(page_title="Report History - MedDetect AI", page_icon="📊",
 if "user_id" not in st.session_state or not st.session_state.user_id:
     st.error("🔒 Please sign in from the **🔑 Sign In** page to view your prediction history.")
     st.stop()
+elif st.session_state.get("is_doctor", False):
+    st.warning("🩺 **This page is for patients.** Please navigate to the Doctor Portal.")
+    st.stop()
 
 # Inject shared premium CSS & sidebar
 inject_premium_css()
