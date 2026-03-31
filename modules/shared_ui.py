@@ -174,7 +174,14 @@ def render_sidebar():
         now = datetime.datetime.now()
         if "login_time" not in st.session_state:
             st.session_state.login_time = now
-        elapsed = (now - st.session_state.login_time).total_seconds() / 60
+            
+        # Handle case where user is from an older session and has a float timestamp
+        login_time = st.session_state.login_time
+        if isinstance(login_time, (float, int)):
+            login_time = datetime.datetime.fromtimestamp(login_time)
+            st.session_state.login_time = login_time
+            
+        elapsed = (now - login_time).total_seconds() / 60
         if elapsed > SESSION_TIMEOUT_MINUTES:
             st.session_state.user_id = None
             st.session_state.user_email = None

@@ -95,14 +95,26 @@ def render_floating_chatbot(context: dict = None):
     else:
         st.session_state.drd_sys_prompt = sys_prompt  # Update context each render
 
-    # Handle incoming chat message via query params or session state
-    if "drd_pending_msg" in st.session_state and st.session_state.drd_pending_msg:
-        user_msg = st.session_state.drd_pending_msg
-        st.session_state.drd_pending_msg = None
-
-        bot_response = _call_ai_server(user_msg, st.session_state.drd_history, st.session_state.drd_sys_prompt)
-        st.session_state.drd_history.append({"role": "user", "content": user_msg})
+    # ── Client-to-Server Bridge ──
+    # We use a hidden form to allow JS to submit messages to Python
+    st.markdown("""
+        <style>
+        div[data-testid="stForm"]:has(.drd-bridge-marker) {
+            display: none !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    with st.form("drd_hidden_form", clear_on_submit=True):
+        st.markdown("<div class='drd-bridge-marker'></div>", unsafe_allow_html=True)
+        bridge_input = st.text_input("msg", key="drd_bridge_input")
+        submitted = st.form_submit_button("Send", key="drd_bridge_submit")
+        
+    if submitted and bridge_input:
+        st.session_state.drd_history.append({"role": "user", "content": bridge_input})
+        bot_response = _call_ai_server(bridge_input, st.session_state.drd_history, st.session_state.drd_sys_prompt)
         st.session_state.drd_history.append({"role": "assistant", "content": bot_response})
+        st.rerun()
 
     # ── Build avatar HTML ──
     if b64:
@@ -176,44 +188,40 @@ def render_floating_chatbot(context: dict = None):
     msgs.appendChild(typ);
     msgs.scrollTop = msgs.scrollHeight;
 
-    // Send to Streamlit server via hidden widget
-    var stInput = doc.querySelector('[data-testid="stChatInput"] textarea') ||
-                  doc.getElementById('drd-st-bridge');
-
-    // Use the Streamlit postMessage API to trigger a rerun with the message
-    var iframes = doc.querySelectorAll('iframe');
-    for (var i = 0; i < iframes.length; i++) {{
-      try {{
-        iframes[i].contentWindow.postMessage({{
-          type: 'drd_chat_msg',
-          message: val
-        }}, '*');
-      }} catch(e) {{}}
+    // Find the hidden Streamlit input and button
+    var pyInput = null;
+    var pySubmit = null;
+    
+    // Find the marker and walk up
+    var marker = doc.querySelector('.drd-bridge-marker');
+    if (marker) {{
+      var formContainer = marker.closest('[data-testid="stForm"]') || 
+                          marker.closest('form') || 
+                          marker.parentElement.parentElement.parentElement.parentElement;
+                          
+      if (formContainer) {{
+         pyInput = formContainer.querySelector('input');
+         var buttons = formContainer.querySelectorAll('button');
+         pySubmit = buttons.length > 0 ? buttons[buttons.length - 1] : null;
+      }}
     }}
 
-    // Fallback: direct API proxy call to same-origin endpoint
-    // Since Streamlit doesn't support async callbacks from JS to Python easily,
-    // we use the proven pattern of direct API calls but with a SAME-ORIGIN PROXY
-    // The proxy is the Streamlit app itself which will handle the call server-side on next rerun
-
-    // For immediate response, we use a lightweight fetch to a serverless function or
-    // fall back to re-rendering. Store message for next Streamlit render cycle.
-    try {{
-      window.__drd_pendingMessage = val;
-      // Trigger Streamlit component value change
-      if (window.Streamlit) {{
-        window.Streamlit.setComponentValue(val);
-      }}
-    }} catch(e) {{}}
-
-    // For now, show a response after a brief async operation
-    // The chatbot will use a simple in-page approach via Streamlit's native chat
-    setTimeout(function() {{
-      var typEl = doc.getElementById('drd-typing');
-      if (typEl) typEl.remove();
-      addMsg('bot', 'Processing your question server-side... Please click the chat input below to see my response. 🔄');
-      sendBtn.disabled = false;
-    }}, 1500);
+    if (pyInput && pySubmit) {{
+      // React needs native setter called to register the value change
+      var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+      nativeInputValueSetter.call(pyInput, val);
+      pyInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+      // Click the submit button to tell python
+      pySubmit.click();
+    }} else {{
+       // fallback error message
+       setTimeout(function() {{
+         var typEl = doc.getElementById('drd-typing');
+         if (typEl) typEl.remove();
+         addMsg('bot', 'Bridge offline. Please try the native expander. ⚠️');
+         sendBtn.disabled = false;
+       }}, 1500);
+    }}
   }}
 
   // --- Update-if-exists Logic ---
@@ -235,15 +243,26 @@ def render_floating_chatbot(context: dict = None):
       }};
     }}
 
-    // Load any new messages from server history
+    // Completely rebuild chat to avoid duplicates when JS runs ahead of Python
     var serverHistory = {history_json};
     var existingMsgCount = parseInt(doc.body.__drd_msg_count || '0');
-    if (serverHistory.length > existingMsgCount) {{
-      for (var i = existingMsgCount; i < serverHistory.length; i++) {{
+    
+    if (serverHistory.length > existingMsgCount || serverHistory.length < existingMsgCount) {{
+      var msgs = doc.getElementById('drd-msgs');
+      msgs.innerHTML = '';
+      for (var i = 0; i < serverHistory.length; i++) {{
         addMsg(serverHistory[i].role === 'assistant' ? 'bot' : 'user', serverHistory[i].content);
       }}
       doc.body.__drd_msg_count = serverHistory.length.toString();
     }}
+    
+    // Remove typing indicator if present
+    var typEl = doc.getElementById('drd-typing');
+    if (typEl) typEl.remove();
+    
+    // Re-enable send button
+    var sendBtn = doc.getElementById('drd-send');
+    if (sendBtn) sendBtn.disabled = false;
 
     var newContext = {context_str_js};
     if (newContext !== "None" && doc.body.__drd_last_notified !== newContext) {{
@@ -450,29 +469,3 @@ def render_floating_chatbot(context: dict = None):
 
     components.html(widget_html, height=0, width=0)
 
-    # ── Streamlit-native chat fallback for actual AI responses ──
-    # This renders a small hidden chat interface that processes messages server-side
-    with st.expander("💬 Dr. Docyote Chat", expanded=False):
-        # Display conversation history
-        for msg in st.session_state.drd_history:
-            role = "assistant" if msg["role"] == "assistant" else "user"
-            with st.chat_message(role, avatar="🩺" if role == "assistant" else "👤"):
-                st.write(msg["content"])
-
-        # Chat input
-        user_input = st.chat_input("Ask Dr. Docyote a health question...", key="drd_chat_input")
-        if user_input:
-            # Show user message
-            with st.chat_message("user", avatar="👤"):
-                st.write(user_input)
-
-            # Get AI response server-side (keys stay on server!)
-            with st.chat_message("assistant", avatar="🩺"):
-                with st.spinner("Dr. Docyote is thinking..."):
-                    response = _call_ai_server(user_input, st.session_state.drd_history, st.session_state.drd_sys_prompt)
-                    st.write(response)
-
-            # Save to history
-            st.session_state.drd_history.append({"role": "user", "content": user_input})
-            st.session_state.drd_history.append({"role": "assistant", "content": response})
-            st.rerun()

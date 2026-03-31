@@ -4,7 +4,7 @@ Supabase Login/Signup + Google Sign-In via raw OAuth 2.0
 Premium glassmorphism UI.
 """
 import streamlit as st
-import sys, os, json, requests, time
+import sys, os, json, requests, time, datetime
 from urllib.parse import urlencode
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -159,7 +159,7 @@ if "code" in query_params and not st.session_state.user_id and google_creds:
             st.session_state.user_email = user_info.get('email')
             st.session_state.google_name = user_info.get('name', '')
             st.session_state.google_picture = user_info.get('picture', '')
-            st.session_state.login_time = time.time()
+            st.session_state.login_time = datetime.datetime.now()
             
             st.query_params.clear()
             st.rerun()
@@ -284,5 +284,3 @@ with tab2:
                     else:
                         st.error(f"Signup failed: {str(e)}")
 
-from modules.floating_chat import render_floating_chatbot
-render_floating_chatbot()

@@ -251,5 +251,3 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-from modules.floating_chat import render_floating_chatbot
-render_floating_chatbot()

@@ -279,6 +279,3 @@ if search_pressed or "search_specialty" in st.session_state:
                         else:
                             st.warning(f"Booking confirmed, but email sending failed: {error}\n\n**Meeting Link:** {meeting_url}")
 
-# Floating Chat
-from modules.floating_chat import render_floating_chatbot
-render_floating_chatbot()
