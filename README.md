@@ -323,6 +323,7 @@ This project is developed for educational and academic purposes.
 
 **Built with ❤️ and AI for better health awareness**
 
-MedDetect AI v2.0 • Powered by Machine Learning & Google Gemini
+MedDetect AI v2.0 • Powered by Machine Learning & Google Gemini API
+Designed and Developed by Ramesh Chavan
 
 </div>
