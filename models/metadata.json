@@ -1,8 +1,8 @@
 {
     "version": "2.4",
-    "timestamp": "2026-03-28T13:22:35.466435",
-    "accuracy": 0.9336,
-    "cv_accuracy": 0.9463,
+    "timestamp": "2026-04-04T19:07:42.127835",
+    "accuracy": 0.9331,
+    "cv_accuracy": 0.9333,
     "hyperparameters": {
         "n_estimators": 200,
         "max_depth": null,

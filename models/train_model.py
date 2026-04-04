@@ -37,9 +37,10 @@ def train():
     
     # Train Random Forest
     print("Training Random Forest...")
+    # Streamlit Cloud Memory Optimization (to prevent 1GB RAM limit crash)
     model = RandomForestClassifier(
-        n_estimators=200, max_depth=None, min_samples_split=2,
-        min_samples_leaf=1, random_state=42, n_jobs=-1
+        n_estimators=50, max_depth=30, min_samples_split=5,
+        min_samples_leaf=2, random_state=42, n_jobs=-1
     )
     model.fit(X_train, y_train)
     

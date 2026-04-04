@@ -44,7 +44,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 # ML Model Settings
 # ──────────────────────────────────────────
 MODEL_TYPE = "RandomForest"
-N_ESTIMATORS = 200
+N_ESTIMATORS = 50
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 TOP_K_PREDICTIONS = 3
