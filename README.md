@@ -8,6 +8,7 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.55-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20DB-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![Gemini](https://img.shields.io/badge/Gemini_2.0-Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
+[![Groq](https://img.shields.io/badge/Groq-Llama--3.3-00A67E?style=for-the-badge&logo=fastapi&logoColor=white)](https://groq.com)
 [![License](https://img.shields.io/badge/License-Educational-yellow?style=for-the-badge)]()
 
 **A full-stack health-tech platform** combining Random Forest ML disease prediction, NLP symptom extraction, AI chatbot consultation, video telemedicine, digital prescriptions with PDF generation, and a dual-role (Patient + Doctor) portal — all wrapped in a premium glassmorphism UI.
@@ -323,6 +324,7 @@ This project is developed for educational and academic purposes.
 
 **Built with ❤️ and AI for better health awareness**
 
-MedDetect AI v2.0 • Powered by Machine Learning & Google Gemini
+MedDetect AI v2.0 • Powered by Machine Learning & Google Gemini API
+Designed and Developed by Ramesh Chavan
 
 </div>
