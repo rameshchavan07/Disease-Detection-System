@@ -161,6 +161,27 @@ if "code" in query_params and not st.session_state.user_id and google_creds:
             st.session_state.google_picture = user_info.get('picture', '')
             st.session_state.login_time = datetime.datetime.now()
             
+            # --- AUTO-REGISTER DOCTORS ---
+            gn = st.session_state.google_name
+            returned_state = query_params.get("state", "")
+            is_doctor_selected = "role:doctor" in returned_state
+            name_implies_doc = gn and (gn.strip().lower().startswith("dr.") or gn.strip().lower().startswith("dr "))
+            
+            if is_doctor_selected or name_implies_doc:
+                from modules.database import get_doctor_by_user_id, register_doctor
+                existing_doc = get_doctor_by_user_id(st.session_state.user_id)
+                if not existing_doc:
+                    register_doctor(
+                        user_id=st.session_state.user_id,
+                        name=gn if gn else st.session_state.user_email.split("@")[0].title(),
+                        email=st.session_state.user_email,
+                        specialty="General Physician" # Default fallback
+                    )
+                st.session_state.is_doctor = True
+            else:
+                st.session_state.is_doctor = False
+            # --------------------------
+            
             st.query_params.clear()
             st.rerun()
     except Exception as e:
@@ -190,6 +211,7 @@ if st.session_state.user_id:
             st.session_state.user_email = None
             st.session_state.pop('google_name', None)
             st.session_state.pop('google_picture', None)
+            st.session_state.pop('is_doctor', None)
             st.rerun()
     st.stop()
 
@@ -203,6 +225,11 @@ st.markdown("""
 
 # ── Google Sign-In ──
 if google_creds:
+    st.markdown("<p style='text-align: center; color: rgba(250,250,250,0.7); margin-bottom: 0.5rem;'>Choose your role before continuing with Google:</p>", unsafe_allow_html=True)
+    google_role = st.radio("I am signing in with Google as a:", ["👤 Patient", "🩺 Doctor / Healthcare Provider"], horizontal=True, label_visibility="collapsed")
+    
+    state_value = "role:doctor" if "Doctor" in google_role else "role:patient"
+
     auth_params = urlencode({
         'client_id': google_creds['client_id'],
         'redirect_uri': REDIRECT_URI,
@@ -210,11 +237,12 @@ if google_creds:
         'scope': 'openid email profile',
         'access_type': 'offline',
         'prompt': 'consent',
+        'state': state_value,
     })
     authorization_url = f"https://accounts.google.com/o/oauth2/v2/auth?{auth_params}"
     
     st.markdown(f'''
-    <div style="margin-bottom: 0.5rem;">
+    <div style="margin-bottom: 0.5rem; margin-top: 1rem;">
         <a href="{authorization_url}" target="_self" class="google-btn">
             <span style="font-size: 1.3em; margin-right: 10px;">🌐</span> Continue with Google
         </a>
@@ -274,6 +302,14 @@ with tab2:
                 try:
                     response = supabase.auth.sign_up({"email": signup_email, "password": signup_password})
                     if response.user:
+                        if "Doctor" in role:
+                            from modules.database import register_doctor
+                            register_doctor(
+                                user_id=response.user.id,
+                                name=signup_email.split("@")[0].title(),
+                                email=signup_email,
+                                specialty="General Physician"
+                            )
                         st.balloons()
                         st.success("🎉 Account created successfully! You can now sign in.")
                     else:

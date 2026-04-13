@@ -5,19 +5,22 @@ import streamlit as st
 from groq import Groq
 
 @st.cache_data(ttl=3600*24)
-def get_nearest_doctors(specialist: str):
+def get_nearest_doctors(specialist: str, override_city: str = None):
     """
-    Uses IP geolocation to find user's city, 
+    Uses given city or IP geolocation to find user's city, 
     then uses Llama 3 to find top real doctors in that city.
     """
     # Step 1: Geolocation
-    city = "New York"
-    try:
-        loc = requests.get('http://ip-api.com/json/', timeout=3).json()
-        if "city" in loc and loc["city"]:
-            city = loc["city"]
-    except Exception:
-        pass
+    if override_city:
+        city = override_city
+    else:
+        city = "New York"
+        try:
+            loc = requests.get('http://ip-api.com/json/', timeout=3).json()
+            if "city" in loc and loc["city"]:
+                city = loc["city"]
+        except Exception:
+            pass
 
     # Step 2: Query Groq Llama 3
     try:

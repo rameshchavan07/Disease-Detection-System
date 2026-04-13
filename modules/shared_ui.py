@@ -261,6 +261,7 @@ def render_sidebar():
                 st.session_state.user_email = None
                 st.session_state.pop('google_name', None)
                 st.session_state.pop('google_picture', None)
+                st.session_state.pop('is_doctor', None)
                 st.rerun()
         else:
             st.markdown("""

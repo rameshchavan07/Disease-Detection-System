@@ -14,6 +14,8 @@ from modules.shared_ui import inject_premium_css, render_sidebar
 from modules.doctor_locator import get_nearest_doctors
 from modules.email_service import send_appointment_email
 from modules.database import get_registered_doctors, save_appointment
+from streamlit_geolocation import streamlit_geolocation
+import requests
 
 st.set_page_config(page_title="Book Appointment - MedDetect AI", page_icon="👨‍⚕️", layout="wide")
 
@@ -119,10 +121,28 @@ specialties = [
     "Psychiatrist", "ENT Specialist", "Endocrinologist", "Rheumatologist"
 ]
 
-col1, col2 = st.columns([2, 1])
+@st.cache_data(show_spinner=False, ttl=3600)
+def get_city_from_coords(lat, lon):
+    try:
+        url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=14&addressdetails=1"
+        res = requests.get(url, headers={'User-Agent': 'MedDetectApp/1.0'})
+        addr = res.json().get('address', {})
+        locality = addr.get('suburb') or addr.get('town') or addr.get('village') or addr.get('city_district') or addr.get('city')
+        return locality
+    except:
+        return None
+
+col1, col2, col3 = st.columns([2, 1, 1])
 with col1:
     selected_spec = st.selectbox("Select required medical specialty:", specialties)
 with col2:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True) # offset
+    loc = streamlit_geolocation()
+    if loc and loc.get('latitude') and loc.get('longitude'):
+        st.session_state.user_lat = loc['latitude']
+        st.session_state.user_lon = loc['longitude']
+with col3:
     st.markdown("<br>", unsafe_allow_html=True)
     search_pressed = st.button("🔍 Find Doctors", type="primary", use_container_width=True)
 
@@ -221,7 +241,13 @@ if search_pressed or "search_specialty" in st.session_state:
     st.caption("These are AI-suggested doctors from your area. They are not registered on MedDetect AI.")
     
     with st.spinner(f"Finding {spec_to_search}s in your area..."):
-        api_result = get_nearest_doctors(spec_to_search)
+        user_locality = None
+        if st.session_state.get('user_lat') and st.session_state.get('user_lon'):
+            user_locality = get_city_from_coords(st.session_state.user_lat, st.session_state.user_lon)
+            if user_locality:
+                st.success(f"📍 Location detected: **{user_locality}**")
+
+        api_result = get_nearest_doctors(spec_to_search, override_city=user_locality)
         
         if api_result and len(api_result.get("doctors", [])) > 0:
             doctors = api_result["doctors"]
